@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://unpkg.com/dayjs@1.8.23/dayjs.min.js"> </script>
+    <script src="https://unpkg.com/@antv/g2@4.2.2/dist/g2.min.js"> </script>
+</head>
+
+<body>
+    <div id="container"></div>
+    <script type="module">
+        function throttle(fn, delay) {
+            let timer
+            return function () {
+                const _this = this
+                const args = arguments
+                if (timer) {
+                    return
+                }
+                timer = setTimeout(() => {
+                    fn.apply(_this, args)
+                    timer = null
+                }, delay)
+            }
+        }
+        let allData = []
+        const chart = new G2.Chart({
+            container: "container",
+            autoFit: true,
+            height: 300,
+            syncViewPadding: true,
+        })
+
+        const scaleChart = () => {
+            chart.scale({
+                x: {
+                    nice: true,
+                },
+                y: {
+                    nice: true,
+                },
+                z: {
+                    nice: true,
+                },
+                time: {
+                    min: -70 * 1000 + Date.now(),
+                    max: Date.now(),
+                },
+            })
+        }
+        scaleChart()
+        chart.axis("y", false)
+        chart.axis("z", false)
+        chart.axis("time", {
+            label: {
+                formatter(val) {
+                    return dayjs(Number(val)).format("mm:ss")
+                },
+            },
+        })
+
+        chart.legend({
+            custom: true,
+            items: [
+                { name: "x", value: "x", marker: { symbol: "line", style: { stroke: "#1890ff", lineWidth: 2 } } },
+                { name: "y", value: "y", marker: { symbol: "line", style: { stroke: "#2fc25b", lineWidth: 2 } } },
+                { name: "z", value: "z", marker: { symbol: "line", style: { stroke: "#6a001b", lineWidth: 2 } } },
+            ],
+        })
+
+        chart.line().position("time*x").color("#1890ff")
+        chart.line().position("time*y").color("#2fc25b")
+        chart.line().position("time*z").color("#6a001b")
+
+        chart.removeInteraction("legend-filter")
+        chart.render()
+
+        const renderChart = throttle(() => {
+            chart.changeData(allData)
+            scaleChart()
+        }, 1000)
+
+        const ws = new WebSocket("ws://localhost:__WEBSOCKET_PORT__")
+        ws.onopen = function () {
+            console.log("connected")
+        }
+        ws.onmessage = ({ data }) => {
+            const parsedData = JSON.parse(data)
+            if (Array.isArray(parsedData)) {
+                parsedData.forEach((line) => {
+                    line.time = dayjs(line.time).valueOf()
+                })
+                allData = allData.concat(parsedData)
+            } else {
+                parsedData.time = dayjs(parsedData.time).valueOf()
+                allData.push(parsedData)
+            }
+            allData.filter((item) => {
+                return Date.now() - item.time < 70 * 1000
+            })
+            renderChart()
+        }
+
+    </script>
+</body>
+
+</html>
