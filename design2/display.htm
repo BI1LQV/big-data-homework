@@ -6,12 +6,20 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="https://unpkg.com/dayjs@1.8.23/dayjs.min.js"> </script>
-    <script src="https://unpkg.com/@antv/g2@4.2.2/dist/g2.min.js"> </script>
+    <script defer src="https://unpkg.com/dayjs@1.8.23/dayjs.min.js"> </script>
+    <script defer src="https://unpkg.com/@antv/g2@4.2.2/dist/g2.min.js"> </script>
+    <style>
+        #pace-count {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 24px;
+        }
+    </style>
 </head>
 
 <body>
     <div id="container"></div>
+    <div id="pace-count"></div>
     <script type="module">
         function throttle(fn, delay) {
             let timer
@@ -102,9 +110,47 @@
             allData = allData.filter((item) => {
                 return Date.now() - item.time < 70 * 1000
             })
+            allData.sort((a, b) => {
+                return a.time - b.time
+            })
+
+            //https://juejin.cn/post/6844903568844161031 参考来的
+            const orline = []
+            let nowline = null
+            let acc = 0
+            allData.forEach(({ x, y, z }) => {
+                if (Math.abs(x) < 0.2 && Math.abs(y) < 0.2 && Math.abs(z) < 1.2) {
+                    return
+                }
+                acc = Math.sqrt(x ** 2 + y ** 2 + z ** 2)
+                if (nowline) {
+                    if (acc >= nowline) {
+                        orline.push(1)
+                        nowline = acc
+                    } else if (acc < nowline) {
+                        orline.push(-1)
+                        nowline = acc
+                    }
+                } else {
+                    nowline = acc
+                    orline.push(0)
+                }
+            })
+            let step = 0
+            let x = 0; let y = 0
+            for (let i = 0; i < orline.length; i++) {
+                if (orline[i] == 1) {
+                    x++
+                    y = 0
+                    x >= 3 ? step++ : step = step
+                } else if (orline[i] == -1) {
+                    x = 0
+                    y++
+                }
+            }
+            document.querySelector("#pace-count").textContent = `步数统计：${Math.floor(step / 2)}`
             renderChart()
         }
-
     </script>
 </body>
 
