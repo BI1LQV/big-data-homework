@@ -99,7 +99,7 @@
                 parsedData.time = dayjs(parsedData.time).valueOf()
                 allData.push(parsedData)
             }
-            allData.filter((item) => {
+            allData = allData.filter((item) => {
                 return Date.now() - item.time < 70 * 1000
             })
             renderChart()
