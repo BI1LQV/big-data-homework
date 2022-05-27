@@ -9,6 +9,7 @@
     <script defer src="https://unpkg.com/dayjs@1.8.23/dayjs.min.js"> </script>
     <script defer src="https://unpkg.com/@antv/g2@4.2.2/dist/g2.min.js"> </script>
     <style>
+        #author,
         #pace-count {
             margin-top: 40px;
             text-align: center;
@@ -18,19 +19,18 @@
 </head>
 
 <body>
+    <div id="author">作者：袁嘉昊 2019010070</div>
     <div id="container"></div>
     <div id="pace-count"></div>
     <script type="module">
         function throttle(fn, delay) {
             let timer
-            return function () {
-                const _this = this
-                const args = arguments
+            return (...args) => {
                 if (timer) {
                     return
                 }
                 timer = setTimeout(() => {
-                    fn.apply(_this, args)
+                    fn.apply(this, args)
                     timer = null
                 }, delay)
             }
@@ -93,7 +93,7 @@
         }, 1000)
 
         const ws = new WebSocket("ws://localhost:__WEBSOCKET_PORT__")
-        ws.onopen = function () {
+        ws.onopen = () => {
             console.log("connected")
         }
         ws.onmessage = ({ data }) => {

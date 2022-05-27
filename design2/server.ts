@@ -77,10 +77,12 @@ wssRec.on("connection", (ws: WebSocketClient) => {
 })
 
 // 展示页面的静态服务器
-const server = Deno.listen({ port: DISPLAY_PORT })
-for await (const conn of server) {
-  serveHttp(conn)
-}
+const server = Deno.listen({ port: DISPLAY_PORT });
+(async ()=>{
+  for await (const conn of server) {
+    serveHttp(conn)
+  }  
+})()
 
 async function serveHttp(conn: Deno.Conn) {
   const httpConn = Deno.serveHttp(conn)
@@ -96,3 +98,6 @@ async function serveHttp(conn: Deno.Conn) {
     )
   }
 }
+console.log('作者：袁嘉昊 2019010070')
+console.log(`http服务启动在 http://localhost:${DISPLAY_PORT}`)
+console.log(`传感器信息上报服务启动在 http://localhost:${RECEIVE_PORT}`)
