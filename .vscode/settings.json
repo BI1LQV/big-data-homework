@@ -3,5 +3,8 @@
         "Datas",
         "nowline",
         "orline"
-    ]
+    ],
+    "deno.enable": true,
+    "deno.lint": false,
+    "deno.unstable": true
 }

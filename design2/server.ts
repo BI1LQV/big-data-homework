@@ -2,6 +2,7 @@ import { type WebSocketClient, WebSocketServer } from "https://deno.land/x/webso
 import { MongoClient, type ObjectId } from "https://deno.land/x/mongo@v0.30.0/mod.ts"
 // @deno-types="https://unpkg.com/dayjs@1.8.23/index.d.ts"
 import dayjs from "https://unpkg.com/dayjs@1.8.23/esm/index.js"
+import { getNetworkAddr } from 'https://deno.land/x/local_ip@0.0.3/mod.ts'
 // 定义常量
 // 端口
 const RECEIVE_PORT = 8091
@@ -59,6 +60,7 @@ wssPub.on("connection", (ws: WebSocketClient) => {
     ws.send(JSON.stringify(res))
   })
 })
+wssPub.on("error", console.log)
 
 // 启动接受数据的websocket
 const wssRec = new WebSocketServer(RECEIVE_PORT)
@@ -75,6 +77,7 @@ wssRec.on("connection", (ws: WebSocketClient) => {
     console.log("wssRec disconnected")
   })
 })
+wssRec.on("error", console.log)
 
 // 展示页面的静态服务器
 const server = Deno.listen({ port: DISPLAY_PORT });
@@ -100,4 +103,4 @@ async function serveHttp(conn: Deno.Conn) {
 }
 console.log('作者：袁嘉昊 2019010070')
 console.log(`http服务启动在 http://localhost:${DISPLAY_PORT}`)
-console.log(`传感器信息上报服务启动在 http://localhost:${RECEIVE_PORT}`)
+console.log(`传感器信息上报服务启动在 http://${await getNetworkAddr()}:${RECEIVE_PORT}`)
