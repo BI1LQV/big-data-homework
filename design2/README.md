@@ -16,7 +16,7 @@ deno安装：`https://deno.land/#installation`
 
 ## 启动服务器端服务
 
-`deno run --allow-net --allow-read server.ts`
+`deno run --allow-net --allow-read --allow-run server.ts`
 
 具体端口配置可以在server.ts头部修改
 
