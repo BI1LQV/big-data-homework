@@ -18,7 +18,7 @@ interface SenSorSchema extends sensorData {
   _id: ObjectId
   time: Date
 }
-function parseData(data: string): sensorData & { time: Date } | null {
+function assertAndParseData(data: string): sensorData & { time: Date } | null {
   try {
     const { x, y, z } = JSON.parse(data)
     if (
@@ -31,6 +31,7 @@ function parseData(data: string): sensorData & { time: Date } | null {
   } catch (e) { }
   return null
 }
+console.log('作者：袁嘉昊 2019010070')
 
 // 连接mongodb
 const client = new MongoClient()
@@ -64,10 +65,11 @@ wssPub.on("error", console.log)
 
 // 启动接受数据的websocket
 const wssRec = new WebSocketServer(RECEIVE_PORT)
+console.log(`传感器信息上报服务启动在 ws://${await getNetworkAddr()}:${RECEIVE_PORT}`)
 wssRec.on("connection", (ws: WebSocketClient) => {
   console.log("wssRec established")
   ws.on("message", (data: string) => {
-    const parsedData = parseData(data)
+    const parsedData = assertAndParseData(data)
     if (parsedData) {
       sensorDatas.insertOne(parsedData)
       wsPub?.send(JSON.stringify(parsedData))
@@ -80,7 +82,8 @@ wssRec.on("connection", (ws: WebSocketClient) => {
 wssRec.on("error", console.log)
 
 // 展示页面的静态服务器
-const server = Deno.listen({ port: DISPLAY_PORT });
+const server = Deno.listen({ port: DISPLAY_PORT })
+console.log(`http服务启动在 http://localhost:${DISPLAY_PORT}`);
 (async ()=>{
   for await (const conn of server) {
     serveHttp(conn)
@@ -101,6 +104,3 @@ async function serveHttp(conn: Deno.Conn) {
     )
   }
 }
-console.log('作者：袁嘉昊 2019010070')
-console.log(`http服务启动在 http://localhost:${DISPLAY_PORT}`)
-console.log(`传感器信息上报服务启动在 http://${await getNetworkAddr()}:${RECEIVE_PORT}`)

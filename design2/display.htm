@@ -109,12 +109,11 @@
             }
             allData = allData.filter((item) => {
                 return Date.now() - item.time < 70 * 1000
-            })
-            allData.sort((a, b) => {
+            }).sort((a, b) => {
                 return a.time - b.time
             })
 
-            //https://juejin.cn/post/6844903568844161031 参考来的
+            // 参考 https://juejin.cn/post/6844903568844161031
             const orline = []
             let nowline = null
             let acc = 0
@@ -137,7 +136,8 @@
                 }
             })
             let step = 0
-            let x = 0; let y = 0
+            let x = 0
+            let y = 0
             for (let i = 0; i < orline.length; i++) {
                 if (orline[i] == 1) {
                     x++
