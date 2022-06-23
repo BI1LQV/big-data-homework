@@ -25,33 +25,36 @@ public class ImportData {
 	public static void createTable(Configuration conf, String TableName,
 			String... Family) throws IOException {
 		HTableDescriptor tableDesc = new HTableDescriptor(TableName);
-		for (String family : Family) 
-			;
+		for (String family : Family) {
+			tableDesc.addFamily(new HColumnDescriptor(family));
+		}
 		HBaseAdmin admin = new HBaseAdmin(conf);
 		if (admin.tableExists(TableName)) {
 			System.out.println("Table exists,trying drop first!");
-			;
-			;
+			admin.disableTable(TableName);
+			admin.deleteTable(TableName);
 		}
 		System.out.println("create table: " + TableName);
-		;
+		admin.createTable(tableDesc);
 	}
 
 	// 产生Put对象，用于插入数据行，键值对通过Map结构传递
 	public static Put Row(String rowkey, String colFamily, Map<String, String> kv) {
 		Put row = new Put(Bytes.toBytes(rowkey));
 		byte[] family = Bytes.toBytes(colFamily);
-		for (Map.Entry<String, String> i : kv.entrySet())
-			;
+		for (Map.Entry<String, String> i : kv.entrySet()) {
+			row.add(family, Bytes.toBytes(i.getKey()), Bytes.toBytes(i.getValue()));
+		}
 		return row;
 	}
 
-	//产生Put对象，用于插入数据行，键值对通过可变数组参数传递
+	// 产生Put对象，用于插入数据行，键值对通过可变数组参数传递
 	public static Put Row(String rowkey, String colFamily, String... kv) {
 		Put row = new Put(Bytes.toBytes(rowkey));
 		byte[] family = Bytes.toBytes(colFamily);
-		for (int i = 0; i < kv.length; i += 2)
-			;
+		for (int i = 0; i < kv.length; i += 2) {
+			row.add(family, Bytes.toBytes(kv[0]), Bytes.toBytes(kv[1]));
+		}
 		return row;
 	}
 
@@ -65,7 +68,7 @@ public class ImportData {
 		while ((line = in.readLine()) != null) {
 			// 解决导入时编码问题需要getBytes("ISO8859-1")
 			String i[] = new String(line.getBytes("ISO8859-1")).split(",");
-			;
+			tbCourse.put(Row(i[nCourse], "paper", i[nPaperSn] + ':' + i[nQuesSn], i[nTargetNo] + ' ' + i[nScore]));
 		}
 	}
 
@@ -73,51 +76,58 @@ public class ImportData {
 	public static void ImportScore(FileSystem fs, Configuration conf)
 			throws IOException {
 		FSDataInputStream in = fs.open(new Path("/in/EEA_Score.csv"));
-		HTable tbCourse = ;
-		HTable tbStud = ;
+		HTable tbCourse = new HTable(conf, "course");
+		HTable tbStud = new HTable(conf, "student");
 		Map<String, String> subScore = new HashMap<String, String>();
 
 		String course = "", paper = "", stud = "";
 		int nCourse = 0, nPaperSn = 1, nStudID = 2, nName = 3, nQuesSn = 4, nAns = 5;
 		Result courRow = new Result();
-
 		String line = in.readLine();
 		while ((line = in.readLine()) != null) {
 			String i[] = new String(line.getBytes("ISO8859-1")).split(",");
-			// 课程变化时需要读取course表中的课程数据
-			if (!course.equals(i[nCourse])) {
-				;
-				;
-			}
 			// 学生或试卷编号变化时需要写入学生数据，更新score原数据
 			if (!stud.equals(i[nStudID]) || !paper.equals(i[nPaperSn])) {
-				if (!stud.isEmpty())
-					;
-				;
-				;
-				;
-				;
-				for (Cell c : courRow.rawCells()) {
-					String key = new String(CellUtil.cloneQualifier(c));
-					if (key.startsWith(paper))
-						;
+				if (!stud.isEmpty()) {
+					// 课程变化时需要读取course表中的课程数据
+					if (!course.equals(i[nCourse])) {
+						courRow = tbCourse.get(new Get(Bytes.toBytes(i[nCourse])));
+						course = i[nCourse];
+					}
+					for (Cell c : courRow.rawCells()) {
+						String key = new String(CellUtil.cloneQualifier(c));
+						if (key.startsWith(paper)) {
+							String mapKey = course + ":" + paper + ":" + key.split(":")[1];
+							String thisScore = subScore.get(mapKey);
+							if (thisScore != null) {
+								Float calcedScore = Float.parseFloat(new String(CellUtil.cloneValue(c)).split(" ")[1])
+										+ Float.parseFloat(thisScore);
+								subScore.put(mapKey, String.valueOf(calcedScore));
+							}
+						}
+					}
+					tbStud.put(Row(stud, "subScore", subScore));
 				}
+				stud = i[nStudID];
+				paper = i[nPaperSn];
+				subScore = new HashMap<String, String>();
+				tbStud.put(Row(i[nStudID], "info", "Name", i[nName]));
 			}
+
 			// 逐行处理数据，计算score值。
-			float ans = Float.parseFloat(i[nAns]);
-			String key = course + ":" + paper + ":" + i[nQuesSn];
-			;
+			String key = i[nCourse] + ":" + paper + ":" + i[nQuesSn];
+			subScore.put(key, i[nAns]);
 		}
 		// 最后一个学生成绩入库
-		;
+		tbStud.put(Row(stud, "subScore", subScore));
 	}
 
 	public static void main(String[] args) throws ClassNotFoundException,
 			IOException, InterruptedException {
 		Configuration conf = HBaseConfiguration.create();
-		conf.set("hbase.rootdir", "hdfs://BigData1:9000/hbase");
-		conf.set("hbase.zookeeper.quorum", "BigData1");
-		FileSystem hdfs = FileSystem.get(URI.create("hdfs://BigData1:9000"), conf);
+		conf.set("hbase.rootdir", "hdfs://bd:9000/hbase");
+		conf.set("hbase.zookeeper.quorum", "bd");
+		FileSystem hdfs = FileSystem.get(URI.create("hdfs://bd:9000"), conf);
 
 		createTable(conf, "course", "target", "paper");
 		ImportPaper(hdfs, conf);
