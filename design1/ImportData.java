@@ -88,12 +88,7 @@ public class ImportData {
 			String i[] = new String(line.getBytes("ISO8859-1")).split(",");
 			// 学生或试卷编号变化时需要写入学生数据，更新score原数据
 			if (!stud.equals(i[nStudID]) || !paper.equals(i[nPaperSn])) {
-				if (!stud.isEmpty()) {
-					// 课程变化时需要读取course表中的课程数据
-					if (!course.equals(i[nCourse])) {
-						courRow = tbCourse.get(new Get(Bytes.toBytes(i[nCourse])));
-						course = i[nCourse];
-					}
+				if (!stud.isEmpty() && !course.isEmpty()) {
 					for (Cell c : courRow.rawCells()) {
 						String key = new String(CellUtil.cloneQualifier(c));
 						if (key.startsWith(paper)) {
@@ -110,6 +105,11 @@ public class ImportData {
 				}
 				stud = i[nStudID];
 				paper = i[nPaperSn];
+				// 课程变化时需要读取course表中的课程数据
+				if (!course.equals(i[nCourse])) {
+					courRow = tbCourse.get(new Get(Bytes.toBytes(i[nCourse])));
+					course = i[nCourse];
+				}
 				subScore = new HashMap<String, String>();
 				tbStud.put(Row(i[nStudID], "info", "Name", i[nName]));
 			}
