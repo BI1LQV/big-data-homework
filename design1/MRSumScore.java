@@ -35,12 +35,12 @@ public class MRSumScore {
 				throws IOException, InterruptedException {
 			String studID = Bytes.toString(key.get());
 			for (Cell c : value.rawCells()) {
-				String cellKey=new String(CellUtil.cloneQualifier(c));
-				String cellValue=new String(CellUtil.cloneValue(c));
-				Matcher matcher=Pattern.compile("^(.+:\\d+)-.+:.+$").matcher(cellKey);
+				String cellKey = new String(CellUtil.cloneQualifier(c));
+				String cellValue = new String(CellUtil.cloneValue(c));
+				Matcher matcher = Pattern.compile("^(.+:\\d+)-.+:.+$").matcher(cellKey);
 				matcher.find();
-				String courseWithYear=matcher.group(1);
-				context.write(new Text(studID+" "+courseWithYear),new FloatWritable(Float.parseFloat(cellValue)));
+				String courseWithYear = matcher.group(1);
+				context.write(new Text(studID + " " + courseWithYear), new FloatWritable(Float.parseFloat(cellValue)));
 			}
 		}
 	}
@@ -49,14 +49,18 @@ public class MRSumScore {
 			TableReducer<Text, FloatWritable, NullWritable> {
 		protected void reduce(Text key, Iterable<FloatWritable> values,
 				Context context) throws IOException, InterruptedException {
-			Float score=0f;
-			for(FloatWritable val:values){
-				score+=val.get();
+			Float score = 0f;
+			for (FloatWritable val : values) {
+				// 检查负数成绩
+				// if(val.get()<0){
+				// System.out.println(key.toString()+" "+val.get());
+				// }
+				score += val.get();
 			}
-			String[] infos=key.toString().split(" ");
-			String studentId=infos[0];
-			String courseId=infos[1];
-			context.write(NullWritable.get(),Row(studentId,"score",courseId,score+""));
+			String[] infos = key.toString().split(" ");
+			String studentId = infos[0];
+			String courseId = infos[1];
+			context.write(NullWritable.get(), Row(studentId, "score", courseId, score + ""));
 		}
 	}
 

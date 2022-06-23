@@ -58,6 +58,34 @@ public class ImportData {
 		return row;
 	}
 
+	private static Result courRow = new Result();
+	private static String preCourse = "";
+
+	private static void putData(HTable tbStud, HTable tbCourse, String stud, String paper, String nowCourse,
+			Map<String, String> subScore) throws IOException {
+		if (nowCourse.equals("")) {
+			return;
+		}
+		// 课程变化时需要读取course表中的课程数 据
+		if (!nowCourse.equals(preCourse)) {
+			courRow = tbCourse.get(new Get(Bytes.toBytes(nowCourse)));
+			preCourse = nowCourse;
+		}
+		for (Cell c : courRow.rawCells()) {
+			String key = new String(CellUtil.cloneQualifier(c));
+			if (key.startsWith(paper)) {
+				String mapKey = nowCourse + ":" + paper + ":" + key.split(":")[1];
+				String thisScore = subScore.get(mapKey);
+				Float calcedScore = Float.parseFloat(new String(CellUtil.cloneValue(c)).split(" ")[1]);
+				if (thisScore != null) {
+					calcedScore += Float.parseFloat(thisScore);
+				}
+				subScore.put(mapKey, calcedScore + "");
+			}
+		}
+		tbStud.put(Row(stud, "subScore", subScore));
+	}
+
 	// 导入试卷数据
 	public static void ImportPaper(FileSystem fs, Configuration conf)
 			throws IOException {
@@ -82,44 +110,26 @@ public class ImportData {
 
 		String course = "", paper = "", stud = "";
 		int nCourse = 0, nPaperSn = 1, nStudID = 2, nName = 3, nQuesSn = 4, nAns = 5;
-		Result courRow = new Result();
 		String line = in.readLine();
 		while ((line = in.readLine()) != null) {
 			String i[] = new String(line.getBytes("ISO8859-1")).split(",");
 			// 学生或试卷编号变化时需要写入学生数据，更新score原数据
 			if (!stud.equals(i[nStudID]) || !paper.equals(i[nPaperSn])) {
-				if (!stud.isEmpty() && !course.isEmpty()) {
-					for (Cell c : courRow.rawCells()) {
-						String key = new String(CellUtil.cloneQualifier(c));
-						if (key.startsWith(paper)) {
-							String mapKey = course + ":" + paper + ":" + key.split(":")[1];
-							String thisScore = subScore.get(mapKey);
-							Float calcedScore = Float.parseFloat(new String(CellUtil.cloneValue(c)).split(" ")[1]);
-							if (thisScore != null) {
-								calcedScore += Float.parseFloat(thisScore);
-							}
-							subScore.put(mapKey, calcedScore + "");
-						}
-					}
-					tbStud.put(Row(stud, "subScore", subScore));
+				if (!stud.isEmpty()) {
+					putData(tbStud, tbCourse, stud, paper, course, subScore);
 				}
 				stud = i[nStudID];
 				paper = i[nPaperSn];
-				// 课程变化时需要读取course表中的课程数据
-				if (!course.equals(i[nCourse])) {
-					courRow = tbCourse.get(new Get(Bytes.toBytes(i[nCourse])));
-					course = i[nCourse];
-				}
 				subScore = new HashMap<String, String>();
 				tbStud.put(Row(i[nStudID], "info", "Name", i[nName]));
 			}
-
 			// 逐行处理数据，计算score值。
 			String key = i[nCourse] + ":" + paper + ":" + i[nQuesSn];
 			subScore.put(key, i[nAns]);
+			course = i[nCourse];
 		}
 		// 最后一个学生成绩入库
-		tbStud.put(Row(stud, "subScore", subScore));
+		putData(tbStud, tbCourse, stud, paper, course, subScore);
 	}
 
 	public static void main(String[] args) throws ClassNotFoundException,
