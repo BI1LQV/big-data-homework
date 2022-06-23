@@ -53,7 +53,7 @@ public class ImportData {
 		Put row = new Put(Bytes.toBytes(rowkey));
 		byte[] family = Bytes.toBytes(colFamily);
 		for (int i = 0; i < kv.length; i += 2) {
-			row.add(family, Bytes.toBytes(kv[0]), Bytes.toBytes(kv[1]));
+			row.add(family, Bytes.toBytes(kv[i]), Bytes.toBytes(kv[i+1]));
 		}
 		return row;
 	}
