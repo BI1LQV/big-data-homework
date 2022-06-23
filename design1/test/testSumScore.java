@@ -11,7 +11,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import java.util.Map;
 
-public class testImport {
+public class testSumScore {
     public static void main(String[] args) throws IOException {
         Configuration conf = HBaseConfiguration.create();
         conf.set("hbase.rootdir", "hdfs://bd:9000/hbase");
@@ -20,12 +20,10 @@ public class testImport {
         HTable tbStud = new HTable(conf, "student");
         Result stuIns = tbStud.get(new Get(Bytes.toBytes("2012010241")));
         int count = 0;
-        Map<byte[], byte[]> map = stuIns.getFamilyMap(Bytes.toBytes("subScore"));
-        for (Map.Entry<byte[], byte[]> stu : map.entrySet()) {
-            String key = Bytes.toString(stu.getKey());
-            String value = Bytes.toString(stu.getValue());
-            System.out.println(key + "   " + value);
+        Map<byte[], byte[]> map = stuIns.getFamilyMap(Bytes.toBytes("score"));
+        for(Map.Entry<byte[], byte[]> entry:map.entrySet()){
             count++;
+            System.out.println(Bytes.toString(entry.getKey())+" "+Bytes.toString(entry.getValue()));
         }
         System.out.println("found:" + count);
     }
