@@ -17,14 +17,16 @@ import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class MRSumScore {
 	public static Put Row(String rowkey, String colFamily, String... kv) {
 		Put row = new Put(Bytes.toBytes(rowkey));
 		byte[] family = Bytes.toBytes(colFamily);
-		// for (int i = 0; i < kv.length; i += 2)
-		// 	// 循环体内需要添加一行代码
-			
+		for (int i = 0; i < kv.length; i += 2) {
+			row.add(family, Bytes.toBytes(kv[0]), Bytes.toBytes(kv[1]));
+		}
 		return row;
 	}
 
@@ -33,11 +35,12 @@ public class MRSumScore {
 				throws IOException, InterruptedException {
 			String studID = Bytes.toString(key.get());
 			for (Cell c : value.rawCells()) {
-				// 需要完成以下代码（10行以内）
-
-
-
-
+				String cellKey=new String(CellUtil.cloneQualifier(c));
+				String cellValue=new String(CellUtil.cloneValue(c));
+				Matcher matcher=Pattern.compile("^(.+:\\d+)-.+:.+$").matcher(cellKey);
+				matcher.find();
+				String courseWithYear=matcher.group(1);
+				context.write(new Text(studID+" "+courseWithYear),new FloatWritable(Float.parseFloat(cellValue)));
 			}
 		}
 	}
@@ -46,20 +49,22 @@ public class MRSumScore {
 			TableReducer<Text, FloatWritable, NullWritable> {
 		protected void reduce(Text key, Iterable<FloatWritable> values,
 				Context context) throws IOException, InterruptedException {
-			// 需要完成以下代码（10行以内）
-
-		
-		
-		
-		
+			Float score=0f;
+			for(FloatWritable val:values){
+				score+=val.get();
+			}
+			String[] infos=key.toString().split(" ");
+			String studentId=infos[0];
+			String courseId=infos[1];
+			context.write(NullWritable.get(),Row(studentId,"score",courseId,score+""));
 		}
 	}
 
 	public static void main(String[] args) throws IOException,
 			ClassNotFoundException, InterruptedException {
 		Configuration conf = HBaseConfiguration.create();
-		conf.set("hbase.rootdir", "hdfs://BigData1:9000/hbase");
-		conf.set("hbase.zookeeper.quorum", "BigData1");
+		conf.set("hbase.rootdir", "hdfs://bd:9000/hbase");
+		conf.set("hbase.zookeeper.quorum", "bd");
 
 		Job job = Job.getInstance(conf);
 		job.setJarByClass(MRSumScore.class);
