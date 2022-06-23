@@ -53,7 +53,7 @@ public class ImportData {
 		Put row = new Put(Bytes.toBytes(rowkey));
 		byte[] family = Bytes.toBytes(colFamily);
 		for (int i = 0; i < kv.length; i += 2) {
-			row.add(family, Bytes.toBytes(kv[i]), Bytes.toBytes(kv[i+1]));
+			row.add(family, Bytes.toBytes(kv[i]), Bytes.toBytes(kv[i + 1]));
 		}
 		return row;
 	}
@@ -99,11 +99,11 @@ public class ImportData {
 						if (key.startsWith(paper)) {
 							String mapKey = course + ":" + paper + ":" + key.split(":")[1];
 							String thisScore = subScore.get(mapKey);
+							Float calcedScore = Float.parseFloat(new String(CellUtil.cloneValue(c)).split(" ")[1]);
 							if (thisScore != null) {
-								Float calcedScore = Float.parseFloat(new String(CellUtil.cloneValue(c)).split(" ")[1])
-										+ Float.parseFloat(thisScore);
-								subScore.put(mapKey, String.valueOf(calcedScore));
+								calcedScore += Float.parseFloat(thisScore);
 							}
+							subScore.put(mapKey, calcedScore + "");
 						}
 					}
 					tbStud.put(Row(stud, "subScore", subScore));
