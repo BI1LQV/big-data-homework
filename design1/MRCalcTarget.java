@@ -1,7 +1,7 @@
 package design1;
 
 import java.io.IOException;
-import java.util.function.Consumer;
+// import java.util.function.Consumer;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
@@ -24,6 +24,8 @@ import org.apache.hadoop.io.FloatWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class MRCalcTarget {
 	private static Configuration conf;
@@ -31,10 +33,10 @@ public class MRCalcTarget {
 	public static Put Row(String rowkey, String colFamily, String... kv) {
 		Put row = new Put(Bytes.toBytes(rowkey));
 		byte[] family = Bytes.toBytes(colFamily);
-		for (int i = 0; i < kv.length; i += 2)
-			// 循环体内需要添加一行代码
-
-			return row;
+		for (int i = 0; i < kv.length; i += 2) {
+			row.add(family, Bytes.toBytes(kv[i]), Bytes.toBytes(kv[i + 1]));
+		}
+		return row;
 	}
 
 	public static class doTargetMapper extends TableMapper<Text, FloatWritable> {
@@ -45,18 +47,25 @@ public class MRCalcTarget {
 			HTable tbStud = new HTable(conf, "student");
 			for (Cell c : value.rawCells()) {
 				String ck[] = new String(CellUtil.cloneQualifier(c)).split(":");
-				String cv[] = new String(CellUtil.cloneValue(c)).split("\t");
-				String PaperSn = ck[0], QuesSn = ck[1], QScore = cv[0], TargetNo[] = cv[1].split(";");
+				String cv[] = new String(CellUtil.cloneValue(c)).split(" ");
+				String PaperSn = ck[0], QuesSn = ck[1], QScore = cv[1], TargetNo[] = cv[0].split(";");
 				String mapkey = course + ":" + PaperSn.substring(0, 2) + ":";
 				for (String tar : TargetNo) {
-					// System.out.println(mapkey+tar+"\t-"+QScore);
 					context.write(new Text(mapkey + tar), new FloatWritable(-Float.parseFloat(QScore)));
 				}
 
 				Scan scan = new Scan();
-				scan.addFamily(Bytes.toBytes("subScore"));
-				// 需要完成以下代码（10行以内）
-
+				scan.addColumn(Bytes.toBytes("subScore"), Bytes.toBytes(course + ":" + PaperSn + ":" + QuesSn));
+				ResultScanner ress = tbStud.getScanner(scan);
+				float sum = 0;
+				int count = 0;
+				for (Result res : ress) {
+					sum += Float.parseFloat(new String(res.value()));
+				}
+				float average = sum / count;
+				for (String tar : TargetNo) {
+					context.write(new Text(mapkey + tar), new FloatWritable(average));
+				}
 			}
 		}
 	}
@@ -64,16 +73,35 @@ public class MRCalcTarget {
 	public static class doTargetReducer extends TableReducer<Text, FloatWritable, NullWritable> {
 		protected void reduce(Text key, Iterable<FloatWritable> values,
 				Context context) throws IOException, InterruptedException {
-			// 需要完成以下代码（10行以内）
-
+			int positiveCount = 0;
+			int negativeCount = 0;
+			float positiveSum = 0;
+			float negativeSum = 0;
+			for (FloatWritable score : values) {
+				float thisScore = score.get();
+				if (thisScore > 0) {
+					positiveCount += thisScore;
+					positiveCount++;
+				} else {
+					negativeCount += thisScore;
+					negativeCount++;
+				}
+			}
+			String fullKey = key.toString();
+			Matcher matcher = Pattern.compile("^(.+):(\\d+:\\d+)$").matcher(fullKey);
+			matcher.find();
+			String courseName = matcher.group(1);
+			String targetId = matcher.group(2);
+			context.write(NullWritable.get(), Row(courseName, "target", targetId, (positiveSum / negativeSum)
+					+ ""));
 		}
 	}
 
 	public static void main(String[] args) throws ClassNotFoundException,
 			IOException, InterruptedException {
 		conf = HBaseConfiguration.create();
-		conf.set("hbase.rootdir", "hdfs://BigData1:9000/hbase");
-		conf.set("hbase.zookeeper.quorum", "BigData1");
+		conf.set("hbase.rootdir", "hdfs://bd:9000/hbase");
+		conf.set("hbase.zookeeper.quorum", "bd");
 
 		Job job = Job.getInstance(conf);
 		job.setJarByClass(MRCalcTarget.class);
