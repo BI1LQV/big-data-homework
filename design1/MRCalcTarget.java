@@ -1,7 +1,6 @@
 package design1;
 
 import java.io.IOException;
-// import java.util.function.Consumer;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.Cell;
@@ -61,6 +60,7 @@ public class MRCalcTarget {
 				int count = 0;
 				for (Result res : ress) {
 					sum += Float.parseFloat(new String(res.value()));
+					count++;
 				}
 				float average = sum / count;
 				for (String tar : TargetNo) {
@@ -73,18 +73,14 @@ public class MRCalcTarget {
 	public static class doTargetReducer extends TableReducer<Text, FloatWritable, NullWritable> {
 		protected void reduce(Text key, Iterable<FloatWritable> values,
 				Context context) throws IOException, InterruptedException {
-			int positiveCount = 0;
-			int negativeCount = 0;
 			float positiveSum = 0;
 			float negativeSum = 0;
 			for (FloatWritable score : values) {
 				float thisScore = score.get();
 				if (thisScore > 0) {
-					positiveCount += thisScore;
-					positiveCount++;
+					positiveSum += thisScore;
 				} else {
-					negativeCount += thisScore;
-					negativeCount++;
+					negativeSum += thisScore;
 				}
 			}
 			String fullKey = key.toString();
@@ -92,8 +88,7 @@ public class MRCalcTarget {
 			matcher.find();
 			String courseName = matcher.group(1);
 			String targetId = matcher.group(2);
-			context.write(NullWritable.get(), Row(courseName, "target", targetId, (positiveSum / negativeSum)
-					+ ""));
+			context.write(NullWritable.get(), Row(courseName, "target", targetId, -1 * positiveSum / negativeSum + ""));
 		}
 	}
 
