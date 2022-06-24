@@ -76,8 +76,11 @@ public class MRRankScore {
 				throws IOException, InterruptedException {
 			String studID = Bytes.toString(key.get());
 			for (Cell c : value.rawCells()) {
-				// 需要完成以下代码（10行以内）
-
+				String cellKey = new String(CellUtil.cloneQualifier(c));
+				String cellValue = new String(CellUtil.cloneValue(c));
+				ps.paper = cellKey;
+				ps.score = Float.parseFloat(cellValue);
+				context.write(ps, new Text(studID));
 			}
 		}
 	}
@@ -88,16 +91,15 @@ public class MRRankScore {
 
 		public void reduce(paperScore key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
-			// 需要完成以下代码（10行左右）
-
+			context.write(new Text(key.paper), new FloatWritable(key.score));
 		}
 	}
 
 	public static void main(String[] args) throws IOException,
 			ClassNotFoundException, InterruptedException, URISyntaxException {
 		Configuration conf = HBaseConfiguration.create();
-		conf.set("hbase.rootdir", "hdfs://BigData1:9000/hbase");
-		conf.set("hbase.zookeeper.quorum", "BigData1");
+		conf.set("hbase.rootdir", "hdfs://bd:9000/hbase");
+		conf.set("hbase.zookeeper.quorum", "bd");
 
 		Job job = Job.getInstance(conf);
 		job.setJarByClass(MRRankScore.class);
@@ -115,8 +117,8 @@ public class MRRankScore {
 		job.setOutputKeyClass(paperScore.class);
 		job.setOutputValueClass(Text.class);
 		job.setOutputFormatClass(TextOutputFormat.class);
-		Path out = new Path("hdfs://BigData1:9000/out/");
-		FileSystem fs = FileSystem.get(new URI("hdfs://BigData1:9000/"), conf);
+		Path out = new Path("hdfs://bd:9000/out/");
+		FileSystem fs = FileSystem.get(new URI("hdfs://bd:9000/"), conf);
 		if (fs.exists(out))
 			fs.delete(out, true);
 		FileOutputFormat.setOutputPath(job, out);
