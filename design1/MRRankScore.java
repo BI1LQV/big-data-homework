@@ -26,6 +26,8 @@ import org.apache.hadoop.mapreduce.Partitioner;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 public class MRRankScore {
 	public static class paperScore implements WritableComparable<paperScore> {
@@ -78,6 +80,9 @@ public class MRRankScore {
 			for (Cell c : value.rawCells()) {
 				String cellKey = new String(CellUtil.cloneQualifier(c));
 				String cellValue = new String(CellUtil.cloneValue(c));
+				Pattern p = Pattern.compile(":");
+				Matcher m = p.matcher(cellKey);
+				cellKey = m.replaceAll("");
 				ps.paper = cellKey;
 				ps.score = Float.parseFloat(cellValue);
 				context.write(ps, new Text(studID));
@@ -91,7 +96,18 @@ public class MRRankScore {
 
 		public void reduce(paperScore key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
-			context.write(new Text(key.paper), new FloatWritable(key.score));
+			String paper = key.paper;
+			Float score = key.score;
+			if (!group.equals(paper)) {
+				group = paper;
+				count = 0;
+				context.write(new Text(group), new FloatWritable(0));
+			}
+			String studID = "";
+			for (Text value : values) {
+				studID = value.toString();
+			}
+			context.write(new Text("	" + (++count) + " " + studID), new FloatWritable(score));
 		}
 	}
 
