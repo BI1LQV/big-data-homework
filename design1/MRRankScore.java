@@ -101,7 +101,7 @@ public class MRRankScore {
 			if (!group.equals(paper)) {
 				group = paper;
 				count = 0;
-				context.write(new Text(group), new FloatWritable(0));
+				context.write(new Text(group), null);
 			}
 			String studID = "";
 			for (Text value : values) {
