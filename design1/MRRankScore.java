@@ -103,11 +103,10 @@ public class MRRankScore {
 				count = 0;
 				context.write(new Text(group), null);
 			}
-			String studID = "";
 			for (Text value : values) {
-				studID = value.toString();
+				String studID = value.toString();
+				context.write(new Text("	" + (++count) + " " + studID), new FloatWritable(score));
 			}
-			context.write(new Text("	" + (++count) + " " + studID), new FloatWritable(score));
 		}
 	}
 
@@ -128,7 +127,8 @@ public class MRRankScore {
 
 		TableMapReduceUtil.initTableMapperJob("student", scan, doRankMapper.class,
 				paperScore.class, Text.class, job);
-
+		job.setGroupingComparatorClass(GroupingComparator.class);
+		job.setPartitionerClass(paperPartitioner.class);
 		job.setReducerClass(doRankReducer.class);
 		job.setOutputKeyClass(paperScore.class);
 		job.setOutputValueClass(Text.class);
